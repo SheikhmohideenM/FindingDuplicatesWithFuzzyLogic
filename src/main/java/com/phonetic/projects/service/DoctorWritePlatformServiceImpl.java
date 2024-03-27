@@ -78,6 +78,17 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
                 duplicateData.put("firstname", duplicateDoctor.getFirstname());
                 duplicateData.put("lastname", duplicateDoctor.getLastname());
                 duplicates.add(duplicateData);
+
+                // Calculate similarity percentages
+                double firstNameSimilarityPercentage = calculateSimilarityPercentage(doctorData.getFirstname(), duplicateDoctor.getFirstname());
+                double lastNameSimilarityPercentage = calculateSimilarityPercentage(doctorData.getLastname(), duplicateDoctor.getLastname());
+                double contactNumberSimilarityPercentage = calculateSimilarityPercentage(doctorData.getContactNumber(), duplicateDoctor.getContactNumber());
+
+                // Add similarity message to duplicate data
+                duplicateData.put("similarity_message", String.format("First Name Similarity: %.2f%%, Last Name Similarity: %.2f%%, Contact Number Similarity: %.2f%%",
+                        firstNameSimilarityPercentage, lastNameSimilarityPercentage, contactNumberSimilarityPercentage));
+
+                duplicates.add(duplicateData);
             }
 
             Map<String, Object> response = new HashMap<>();
