@@ -29,5 +29,7 @@ public class Doctor implements Serializable {
 
     private LocalDate dateOfBirth;
 
+    private String ssnNumber;
+
 
 }

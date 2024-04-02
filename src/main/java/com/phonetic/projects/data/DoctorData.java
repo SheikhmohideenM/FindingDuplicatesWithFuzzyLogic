@@ -25,4 +25,6 @@ public class DoctorData {
 
     private LocalDate dateOfBirth;
 
+    private String ssnNumber;
+
 }
