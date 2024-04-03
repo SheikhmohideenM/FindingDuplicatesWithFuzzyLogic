@@ -11,8 +11,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 @Service
@@ -24,47 +26,70 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
     private final Soundex soundex = new Soundex();
     private int sequentialDoctorNumber = 1;
 
-    private static final double THRESHOLD = 80.0;
+    private final JdbcTemplate jdbcTemplate; // Inject JdbcTemplate
+    private static final String FETCH_THRESHOLD_QUERY = "SELECT percentage, status, firstname_weight, contactnumber_weight, ssnnumber_weight FROM similarity_config";
+
 
     @Override
     public ResponseEntity<?> createDoctor(DoctorData doctorData) throws EncoderException {
+
         Doctor doctor = new Doctor();
-        doctor.setFirstname(doctorData.getFirstname());
-        doctor.setLastname(doctorData.getLastname());
-        doctor.setContactNumber(doctorData.getContactNumber());
-        doctor.setDateOfBirth(doctorData.getDateOfBirth());
-        doctor.setSsnNumber(doctorData.getSsnNumber());
-        // Generate and set doctorId with static number "100", sequential number, and 2 alphabet length
-        doctor.setDoctorId(IDGenerator.generateDoctorId(100, sequentialDoctorNumber++, 2));
 
-        Doctor createdDoctor = doctorRepository.save(doctor);
+        // Fetch threshold percentage, status, and attribute weights from the database
+        Map<String, Object> thresholdData = jdbcTemplate.queryForMap(FETCH_THRESHOLD_QUERY);
+        BigDecimal thresholdPercentage = (BigDecimal) thresholdData.get("percentage");
+        Boolean thresholdStatus = (Boolean) thresholdData.get("status");
+        BigDecimal firstNameWeight = (BigDecimal) thresholdData.get("firstname_weight");
+        BigDecimal contactNumberWeight = (BigDecimal) thresholdData.get("contactnumber_weight");
+        BigDecimal ssnNumberWeight = (BigDecimal) thresholdData.get("ssnnumber_weight");
 
-        // Check for duplicate first names or contact numbers before creating a new doctor
-        List<Doctor> potentialDuplicates = findMatchingDoctors(doctorData);
-
-        List<String> message = new ArrayList<>();
-
-        if (!potentialDuplicates.isEmpty()) {
-            message.add("A doctor with the same name already exists.");
+        // Check if the threshold is active
+        if (!thresholdStatus) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Threshold is not active.");
         }
 
-        // If duplicates found, construct response with error messages and duplicate details
-        if (!potentialDuplicates.isEmpty()) {
+        // Check for potential duplicates
+        List<Doctor> potentialDuplicates = findMatchingDoctors(doctorData);
+
+        // If no duplicates found, proceed to save the new doctor
+        if (potentialDuplicates.isEmpty()) {
+            doctor.setFirstname(doctorData.getFirstname());
+            doctor.setLastname(doctorData.getLastname());
+            doctor.setContactNumber(doctorData.getContactNumber());
+            doctor.setDateOfBirth(doctorData.getDateOfBirth());
+            doctor.setSsnNumber(doctorData.getSsnNumber());
+            // Generate and set doctorId with static number "100", sequential number, and 2 alphabet length
+            doctor.setDoctorId(IDGenerator.generateDoctorId(100, sequentialDoctorNumber++, 2));
+
+            doctorRepository.save(doctor);
+
+            // Return success response
+            Map<String, Object> response = new HashMap<>();
+            response.put("DoctorId",doctor.getDoctorId());
+            response.put("First Name",doctor.getFirstname());
+            response.put("Last Name",doctor.getLastname());
+            response.put("Date Of Birth",doctor.getDateOfBirth());
+            response.put("SSN Number",doctor.getSsnNumber());
+            response.put("message", "Doctor data inserted successfully.");
+            return ResponseEntity.ok().body(response);
+        } else {
+            // If duplicates found, construct response with error messages and duplicate details
             List<Map<String, Object>> duplicates = new ArrayList<>();
-
-            // Iterate over the combined list of duplicates
+            List<String> message = new ArrayList<>();
+            // Iterate over the potential duplicates
             for (Doctor duplicateDoctor : potentialDuplicates) {
-
                 // Calculate similarity percentages for each attribute
                 Map<String, Double> individualSimilarities = calculateSimilarityPercentage(doctorData, duplicateDoctor);
-                double firstNameSimilarityPercentage = individualSimilarities.get("firstName") * 0.5;
-                double contactNumberSimilarityPercentage = individualSimilarities.get("contactNumber") * 0.2;
-                double ssnNumberSimilarityPercentage = individualSimilarities.get("ssnNumber") * 1.0;
+                double firstNameSimilarityPercentage = individualSimilarities.get("firstName") * firstNameWeight.doubleValue();
+                double contactNumberSimilarityPercentage = individualSimilarities.get("contactNumber") * contactNumberWeight.doubleValue();
+                double ssnNumberSimilarityPercentage = individualSimilarities.get("ssnNumber") * ssnNumberWeight.doubleValue();
 
                 // Calculate overall similarity percentage
-                double overallSimilarityPercentage = (firstNameSimilarityPercentage + contactNumberSimilarityPercentage + ssnNumberSimilarityPercentage) / 1.7;
+                double overallSimilarityPercentage = (firstNameSimilarityPercentage + contactNumberSimilarityPercentage + ssnNumberSimilarityPercentage) /
+                        (firstNameWeight.doubleValue() + contactNumberWeight.doubleValue() + ssnNumberWeight.doubleValue());
 
-                if (overallSimilarityPercentage >= THRESHOLD) {
+                // If similarity percentage exceeds the threshold, consider it as a duplicate
+                if (overallSimilarityPercentage >= thresholdPercentage.doubleValue()) {
                     Map<String, Object> duplicateData = new HashMap<>();
                     duplicateData.put("id", duplicateDoctor.getId());
                     duplicateData.put("contact_number", duplicateDoctor.getContactNumber());
@@ -80,19 +105,35 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
                 }
             }
 
-            Map<String, Object> response = new HashMap<>();
-            if (duplicates.isEmpty()) {
-                response.put("message", "Doctor data inserted successfully.");
-            } else {
+            doctor.setFirstname(doctorData.getFirstname());
+            doctor.setLastname(doctorData.getLastname());
+            doctor.setContactNumber(doctorData.getContactNumber());
+            doctor.setDateOfBirth(doctorData.getDateOfBirth());
+            doctor.setSsnNumber(doctorData.getSsnNumber());
+            // Generate and set doctorId with static number "100", sequential number, and 2 alphabet length
+            doctor.setDoctorId(IDGenerator.generateDoctorId(100, sequentialDoctorNumber++, 2));
+
+            doctorRepository.save(doctor);
+
+            // If duplicates found, return the response with duplicate details
+            if (!duplicates.isEmpty()) {
+                Map<String, Object> response = new HashMap<>();
+                response.put("currentDoctorData", doctorData);
+
                 response.put("isDuplicate", message);
                 response.put("totalDuplicates", duplicates.size());
                 response.put("duplicates", duplicates);
-            }
-            return ResponseEntity.ok().body(response);
-        }
+                String warningMessage = "Warning: Multiple patients found with the same SSN Number ID.";
+                response.put("warningMessage", warningMessage);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdDoctor);
+                return ResponseEntity.ok().body(response);
+            }
+
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Warning: Multiple patients found with the same SSN Number ID.");
+        }
     }
+
 
     private Map<String, Double> calculateSimilarityPercentage(DoctorData doctorData, Doctor doctor) {
         Map<String, Double> similarityMap = new HashMap<>();
