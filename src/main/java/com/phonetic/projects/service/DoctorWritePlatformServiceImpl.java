@@ -123,14 +123,14 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
                 response.put("isDuplicate", message);
                 response.put("totalDuplicates", duplicates.size());
                 response.put("duplicates", duplicates);
-                String warningMessage = "Warning: Multiple patients found with the same SSN Number ID.";
+                String warningMessage = "Warning: Multiple doctors found with the same SSN Number ID.";
                 response.put("warningMessage", warningMessage);
 
                 return ResponseEntity.ok().body(response);
             }
 
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body("Warning: Multiple patients found with the same SSN Number ID.");
+                    .body("Warning: Multiple doctors found with the same SSN Number ID.");
         }
     }
 
