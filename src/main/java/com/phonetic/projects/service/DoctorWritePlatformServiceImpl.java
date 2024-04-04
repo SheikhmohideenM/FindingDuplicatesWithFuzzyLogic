@@ -2,12 +2,10 @@ package com.phonetic.projects.service;
 
 import com.phonetic.projects.data.DoctorData;
 import com.phonetic.projects.entity.Doctor;
-import com.phonetic.projects.exceptions.DuplicateDataException;
 import com.phonetic.projects.repository.DoctorRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.codec.EncoderException;
 import org.apache.commons.codec.language.Soundex;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +13,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +27,7 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
     private final Soundex soundex = new Soundex();
     private int sequentialDoctorNumber = 1;
 
-    private final JdbcTemplate jdbcTemplate; // Inject JdbcTemplate
+    private final JdbcTemplate jdbcTemplate;
     private static final String FETCH_THRESHOLD_QUERY = "SELECT percentage, status, firstname_weight, contactnumber_weight, ssnnumber_weight FROM similarity_config";
 
 
@@ -76,6 +77,7 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
             // If duplicates found, construct response with error messages and duplicate details
             List<Map<String, Object>> duplicates = new ArrayList<>();
             List<String> message = new ArrayList<>();
+
             // Iterate over the potential duplicates
             for (Doctor duplicateDoctor : potentialDuplicates) {
                 // Calculate similarity percentages for each attribute
@@ -120,7 +122,7 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
                 Map<String, Object> response = new HashMap<>();
                 response.put("currentDoctorData", doctorData);
 
-                response.put("isDuplicate", message);
+                //response.put("isDuplicate", message);
                 response.put("totalDuplicates", duplicates.size());
                 response.put("duplicates", duplicates);
                 String warningMessage = "Warning: Multiple doctors found with the same SSN Number ID.";
@@ -170,15 +172,12 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
     private boolean isFuzzyMatch(DoctorData doctorData, Doctor doctor) throws EncoderException {
         // Calculate Levenshtein distances for first name, last name, contact number, and SSN number
         int firstNameDistance = levenshteinDistance.apply(doctorData.getFirstname().toLowerCase(), doctor.getFirstname().toLowerCase());
-        int lastNameDistance = levenshteinDistance.apply(doctorData.getLastname().toLowerCase(), doctor.getLastname().toLowerCase());
+        //int lastNameDistance = levenshteinDistance.apply(doctorData.getLastname().toLowerCase(), doctor.getLastname().toLowerCase());
         int contactNumberDistance = levenshteinDistance.apply(doctorData.getContactNumber().toLowerCase(), doctor.getContactNumber().toLowerCase());
         int ssnNumberDistance = levenshteinDistance.apply(doctorData.getSsnNumber().toLowerCase(), doctor.getSsnNumber().toLowerCase());
 
         // Check if any of the distances exceed the threshold for similarity
-        boolean levenshteinSimilarity = firstNameDistance <= 2
-                && lastNameDistance <= 2
-                && contactNumberDistance <= 2
-                && ssnNumberDistance <= 2;
+        boolean levenshteinSimilarity = firstNameDistance <= 2 || contactNumberDistance <= 2 || ssnNumberDistance <= 2;
 
         // Return true if Levenshtein distance similarity is detected
         return levenshteinSimilarity;
@@ -187,14 +186,13 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
     private boolean isPhoneticMatch(DoctorData doctorData, Doctor doctor) throws EncoderException {
         // Get Soundex codes for first name, last name, contact number, and SSN number
         String firstNameSoundex = soundex.encode(doctorData.getFirstname());
-        String lastNameSoundex = soundex.encode(doctorData.getLastname());
+        //String lastNameSoundex = soundex.encode(doctorData.getLastname());
         String contactNumberSoundex = soundex.encode(doctorData.getContactNumber());
         String ssNumberSoundex = soundex.encode(doctorData.getSsnNumber());
 
         // Check if Soundex codes indicate similarity
         boolean soundexSimilarity =
                 firstNameSoundex.equals(soundex.encode(doctor.getFirstname())) ||
-                        lastNameSoundex.equals(soundex.encode(doctor.getLastname())) ||
                         contactNumberSoundex.equals(soundex.encode(doctor.getContactNumber())) ||
                         ssNumberSoundex.equals(soundex.encode(doctor.getSsnNumber()));
 

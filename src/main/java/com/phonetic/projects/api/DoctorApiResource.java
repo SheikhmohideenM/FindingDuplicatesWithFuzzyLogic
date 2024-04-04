@@ -1,11 +1,9 @@
 package com.phonetic.projects.api;
 
 import com.phonetic.projects.data.DoctorData;
-import com.phonetic.projects.entity.Doctor;
 import com.phonetic.projects.service.DoctorReadPlatformService;
 import com.phonetic.projects.service.DoctorWritePlatformService;
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import org.apache.commons.codec.EncoderException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

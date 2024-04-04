@@ -5,8 +5,8 @@ import java.util.Random;
 public class IDGenerator {
 
     public static String generateDoctorId(int staticNumber, int sequentialNumber, int alphabetLength ){
-        StringBuilder sb = new StringBuilder();
 
+        StringBuilder sb = new StringBuilder();
 
         // Append static number
         sb.append(staticNumber);
