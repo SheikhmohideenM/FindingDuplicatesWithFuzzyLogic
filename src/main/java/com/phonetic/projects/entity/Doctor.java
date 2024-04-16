@@ -19,9 +19,9 @@ public class Doctor implements Serializable {
 
     private String doctorId;
 
-    private String firstname;
+    private String firstName;
 
-    private String lastname;
+    private String lastName;
 
     private String contactNumber;
 

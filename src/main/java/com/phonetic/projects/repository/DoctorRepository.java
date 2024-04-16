@@ -9,11 +9,11 @@ import java.util.UUID;
 
 @Repository
 public interface DoctorRepository extends JpaRepository<Doctor, UUID> {
-    List<Doctor> findByFirstnameIgnoreCase(String firstname);
-
-    List<Doctor> findByContactNumber(String contactNumber);
-
-    List<Doctor> findByFirstnameAndContactNumberAndSsnNumber(String firstname, String contactNumber, String ssnNumber);
-
-    List<Doctor> findBySsnNumber(String ssnNumber);
+//    List<Doctor> findByFirstnameIgnoreCase(String firstname);
+//
+//    List<Doctor> findByContactNumber(String contactNumber);
+//
+//    List<Doctor> findByFirstnameAndContactNumberAndSsnNumber(String firstname, String contactNumber, String ssnNumber);
+//
+//    List<Doctor> findBySsnNumber(String ssnNumber);
 }

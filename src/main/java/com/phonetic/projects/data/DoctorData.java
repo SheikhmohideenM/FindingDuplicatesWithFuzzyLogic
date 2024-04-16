@@ -14,11 +14,11 @@ public class DoctorData {
 
     private UUID id;
 
-    private String firstname;
+    private String firstName;
 
     private String doctorId;
 
-    private String lastname;
+    private String lastName;
 
     private String contactNumber;
 
