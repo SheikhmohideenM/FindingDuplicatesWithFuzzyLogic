@@ -12,10 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -55,7 +52,7 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
             doctorRepository.save(doctor);
 
             // Return success response
-            Map<String, Object> response = new HashMap<>();
+            Map<String, Object> response = new LinkedHashMap<>();
             response.put("DoctorId",doctor.getDoctorId());
             response.put("First Name",doctor.getFirstName());
             response.put("Last Name",doctor.getLastName());
@@ -72,32 +69,46 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
                 double overallSimilarityPercentage = 0.0;
 
                 for (Map<String, Object> thresholdData : thresholdDataList) {
-                    String columnName = (String) thresholdData.get("column_name");
-                    Double weightage = (Double) thresholdData.get("weightage");
-                    // Convert the columnName to match the keys in individualSimilarities
-                    String key = convertColumnName(columnName);
-                    // Check if the key exists in individualSimilarities
-                    if (individualSimilarities.containsKey(key)) {
-                        Double attributeSimilarityPercentage = individualSimilarities.get(key);
-                        double weightedSimilarityPercentage = attributeSimilarityPercentage * weightage / 100.0;
-                        overallSimilarityPercentage += weightedSimilarityPercentage;
+                    String tableName = (String) thresholdData.get("table_name");
+                    if ("doctor".equals(tableName)) {
+                        String columnName = (String) thresholdData.get("column_name");
+                        Double weightage = (Double) thresholdData.get("weightage");
+                        // Convert the columnName to match the keys in individualSimilarities
+                        String key = convertColumnName(columnName);
+                        // Check if the key exists in individualSimilarities
+                        if (individualSimilarities.containsKey(key)) {
+                            Double attributeSimilarityPercentage = individualSimilarities.get(key);
+                            double weightedSimilarityPercentage = attributeSimilarityPercentage * weightage / 100.0;
+                            overallSimilarityPercentage += weightedSimilarityPercentage;
+                        }
+                    } else {
+                        String columnName = (String) thresholdData.get("column_name");
+                        Double weightage = (Double) thresholdData.get("weightage");
+                        String key = convertColumnName(columnName);
+                        if (individualSimilarities.containsKey(key)) {
+                            Double attributeSimilarityPercentage = individualSimilarities.get(key);
+                            double weightedSimilarityPercentage = attributeSimilarityPercentage * weightage / 100.0;
+                            overallSimilarityPercentage += weightedSimilarityPercentage;
+                        }
                     }
                 }
                 double finalWeightageAverage = overallSimilarityPercentage / individualSimilarities.size();
 
                 // If similarity percentage exceeds the threshold, consider it as a duplicate
                 //if (overallSimilarityPercentage >= thresholdPercentage.doubleValue()) {
-                    Map<String, Object> duplicateData = new HashMap<>();
+                    // Construct the response map
+                    Map<String, Object> duplicateData = new LinkedHashMap<>(); // Use LinkedHashMap to maintain insertion order
                     duplicateData.put("id", duplicateDoctor.getId());
-                    duplicateData.put("contact_number", duplicateDoctor.getContactNumber());
-                    duplicateData.put("date_of_birth", duplicateDoctor.getDateOfBirth());
                     duplicateData.put("doctor_id", duplicateDoctor.getDoctorId());
+                    duplicateData.put("similarity_percentage", String.format("%.2f%%", overallSimilarityPercentage));
+                    duplicateData.put("finalWeightageAverage", finalWeightageAverage);
                     duplicateData.put("firstname", duplicateDoctor.getFirstName());
                     duplicateData.put("lastname", duplicateDoctor.getLastName());
                     duplicateData.put("ssnNumber", duplicateDoctor.getSsnNumber());
-                    duplicateData.put("similarity_percentage", overallSimilarityPercentage);
-                    duplicateData.put("finalWeightageAverage", finalWeightageAverage);
-                    duplicateData.put("similarity_message", String.format("Overall Similarity: %.2f%%", overallSimilarityPercentage));
+                    duplicateData.put("contact_number", duplicateDoctor.getContactNumber());
+                    String individualSimilarityMessage = String.format("First Name Similarity: %.2f%%, Last Name Similarity: %.2f%%, Contact Number Similarity: %.2f%%, SSN Number Similarity: %.2f%%",
+                            individualSimilarities.get("firstName"), individualSimilarities.get("lastName"), individualSimilarities.get("contactNumber"), individualSimilarities.get("ssnNumber"));
+                    duplicateData.put("individual_similarity", individualSimilarityMessage);
                     duplicates.add(duplicateData);
                 //}
             }
@@ -118,7 +129,7 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
                 response.put("currentDoctorData", doctorData);
                 response.put("totalDuplicates", duplicates.size());
                 response.put("duplicates", duplicates);
-                String warningMessage = "Warning: Multiple doctors found with the same SSN Number ID.";
+                String warningMessage = "Multiple doctors found with the same SSN Number ID.";
                 response.put("warningMessage", warningMessage);
                 return ResponseEntity.ok().body(response);
             }
