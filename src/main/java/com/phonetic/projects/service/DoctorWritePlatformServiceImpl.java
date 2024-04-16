@@ -39,7 +39,6 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
         Doctor doctor = new Doctor();
         // Fetch threshold percentage, status, and attribute weights from the database
         List<Map<String, Object>> thresholdDataList = jdbcTemplate.queryForList(FETCH_THRESHOLD_QUERY);
-        System.out.println(thresholdDataList);
         // Check for potential duplicates
         List<Doctor> potentialDuplicates = findMatchingDoctors(doctorData);
 
