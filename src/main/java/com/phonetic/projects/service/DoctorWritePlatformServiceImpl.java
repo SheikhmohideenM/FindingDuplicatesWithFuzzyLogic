@@ -66,32 +66,68 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
 
             for (Doctor duplicateDoctor : potentialDuplicates) {
                 Map<String, Double> individualSimilarities = calculateSimilarityPercentage(doctorData, duplicateDoctor);
-                double overallSimilarityPercentage = 0.0;
+                //double overallSimilarityPercentage = 0.0;
+                double firstNameWeightedSimilarity = 0.0;
+                double lastNameWeightedSimilarity = 0.0;
+                double contactNumberWeightedSimilarity = 0.0;
+                double ssnNumberWeightedSimilarity = 0.0;
 
                 for (Map<String, Object> thresholdData : thresholdDataList) {
                     String tableName = (String) thresholdData.get("table_name");
                     if ("doctor".equals(tableName)) {
                         String columnName = (String) thresholdData.get("column_name");
                         Double weightage = (Double) thresholdData.get("weightage");
-                        // Convert the columnName to match the keys in individualSimilarities
-                        String key = convertColumnName(columnName);
-                        // Check if the key exists in individualSimilarities
-                        if (individualSimilarities.containsKey(key)) {
-                            Double attributeSimilarityPercentage = individualSimilarities.get(key);
+                        if (individualSimilarities.containsKey(columnName)) {
+                            Double attributeSimilarityPercentage = individualSimilarities.get(columnName);
                             double weightedSimilarityPercentage = attributeSimilarityPercentage * weightage / 100.0;
-                            overallSimilarityPercentage += weightedSimilarityPercentage;
+                            //overallSimilarityPercentage += attributeSimilarityPercentage;
+                            switch (columnName) {
+                                case "first_name":
+                                    firstNameWeightedSimilarity += weightedSimilarityPercentage;
+                                    break;
+                                case "last_name":
+                                    lastNameWeightedSimilarity += weightedSimilarityPercentage;
+                                    break;
+                                case "contact_number":
+                                    contactNumberWeightedSimilarity += weightedSimilarityPercentage;
+                                    break;
+                                case "ssn_number":
+                                    ssnNumberWeightedSimilarity += weightedSimilarityPercentage;
+                                    break;
+                                default:
+                                    break;
+                            }
                         }
                     } else {
                         String columnName = (String) thresholdData.get("column_name");
                         Double weightage = (Double) thresholdData.get("weightage");
-                        String key = convertColumnName(columnName);
-                        if (individualSimilarities.containsKey(key)) {
-                            Double attributeSimilarityPercentage = individualSimilarities.get(key);
+                        //String key = convertColumnName(columnName);
+                        if (individualSimilarities.containsKey(columnName)) {
+                            Double attributeSimilarityPercentage = individualSimilarities.get(columnName);
                             double weightedSimilarityPercentage = attributeSimilarityPercentage * weightage / 100.0;
-                            overallSimilarityPercentage += weightedSimilarityPercentage;
+                            switch (columnName) {
+                                case "first_name":
+                                    firstNameWeightedSimilarity += weightedSimilarityPercentage;
+                                    break;
+                                case "last_name":
+                                    lastNameWeightedSimilarity += weightedSimilarityPercentage;
+                                    break;
+                                case "contact_number":
+                                    contactNumberWeightedSimilarity += weightedSimilarityPercentage;
+                                    break;
+                                case "ssn_number":
+                                    ssnNumberWeightedSimilarity += weightedSimilarityPercentage;
+                                    break;
+                                default:
+                                    break;
+                            }
                         }
                     }
                 }
+
+                // Calculate the overall similarity percentage by summing up the weighted similarities for each attribute
+                double overallSimilarityPercentage = firstNameWeightedSimilarity + lastNameWeightedSimilarity +
+                        contactNumberWeightedSimilarity + ssnNumberWeightedSimilarity;
                 double finalWeightageAverage = overallSimilarityPercentage / individualSimilarities.size();
 
                 // If similarity percentage exceeds the threshold, consider it as a duplicate
@@ -99,16 +135,16 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
                     // Construct the response map
                     Map<String, Object> duplicateData = new LinkedHashMap<>(); // Use LinkedHashMap to maintain insertion order
                     duplicateData.put("id", duplicateDoctor.getId());
-                    duplicateData.put("doctor_id", duplicateDoctor.getDoctorId());
-                    duplicateData.put("similarity_percentage", String.format("%.2f%%", overallSimilarityPercentage));
+                    duplicateData.put("doctorId", duplicateDoctor.getDoctorId());
+                    duplicateData.put("overAllSimilarityPercentage", String.format("%.2f%%", overallSimilarityPercentage));
                     duplicateData.put("finalWeightageAverage", finalWeightageAverage);
                     duplicateData.put("firstname", duplicateDoctor.getFirstName());
                     duplicateData.put("lastname", duplicateDoctor.getLastName());
                     duplicateData.put("ssnNumber", duplicateDoctor.getSsnNumber());
                     duplicateData.put("contact_number", duplicateDoctor.getContactNumber());
                     String individualSimilarityMessage = String.format("First Name Similarity: %.2f%%, Last Name Similarity: %.2f%%, Contact Number Similarity: %.2f%%, SSN Number Similarity: %.2f%%",
-                            individualSimilarities.get("firstName"), individualSimilarities.get("lastName"), individualSimilarities.get("contactNumber"), individualSimilarities.get("ssnNumber"));
-                    duplicateData.put("individual_similarity", individualSimilarityMessage);
+                            individualSimilarities.get("first_name"), individualSimilarities.get("last_name"), individualSimilarities.get("contact_number"), individualSimilarities.get("ssn_number"));
+                    duplicateData.put("individualSimilarity Matching", individualSimilarityMessage);
                     duplicates.add(duplicateData);
                 //}
             }
@@ -163,10 +199,10 @@ public class DoctorWritePlatformServiceImpl implements DoctorWritePlatformServic
         double contactNumberSimilarityPercentage = calculateIndividualSimilarityPercentage(doctorData.getContactNumber(), doctor.getContactNumber());
         double ssnNumberSimilarityPercentage = calculateIndividualSimilarityPercentage(doctorData.getSsnNumber(), doctor.getSsnNumber());
 
-        similarityMap.put("firstName", firstNameSimilarityPercentage);
-        similarityMap.put("lastName", lastNameSimilarityPercentage);
-        similarityMap.put("contactNumber", contactNumberSimilarityPercentage);
-        similarityMap.put("ssnNumber", ssnNumberSimilarityPercentage);
+        similarityMap.put("first_name", firstNameSimilarityPercentage);
+        similarityMap.put("last_name", lastNameSimilarityPercentage);
+        similarityMap.put("contact_number", contactNumberSimilarityPercentage);
+        similarityMap.put("ssn_number", ssnNumberSimilarityPercentage);
 
         return similarityMap;
     }
